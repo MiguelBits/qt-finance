@@ -1,1 +1,1 @@
-pip install pandas numpy matplotlib yfinance mplcurs
+pip install pandas numpy matplotlib yfinance mplcurs pycoingecko
