@@ -1,37 +1,43 @@
 import pandas as pd
 import numpy as np
+from sklearn.linear_model import LinearRegression
 import matplotlib.pyplot as plt
-import yfinance as yf
-from datetime import datetime, timedelta
 
-# Fetch Bitcoin data
-end_date = datetime.now()
-start_date = end_date - timedelta(days=365)  # Last year of data
+# Read the CSV file
+df = pd.read_csv('data.csv')
 
-btc_data = yf.download('BTC-USD', start=start_date, end=end_date)
+# Convert the 'Day' column to datetime
+df['Day'] = pd.to_datetime(df['Day'])
 
-# Display the first few rows of the data
-print(btc_data.head())
+# Create a numeric representation of dates (number of Days since the first date)
+df['Days_since_start'] = (df['Day'] - df['Day'].min()).dt.days
 
-# Plot closing price
+# Prepare the data for linear regression
+X = df['Days_since_start'].values.reshape(-1, 1)
+y = df['mvrv'].values
+
+# Create and fit the linear regression model
+model = LinearRegression()
+model.fit(X, y)
+
+# Make predictions
+y_pred = model.predict(X)
+
+# Plot the results
 plt.figure(figsize=(12, 6))
-plt.plot(btc_data.index, btc_data['Close'])
-plt.title('Bitcoin Closing Price - Last Year')
+plt.scatter(df['Day'], df['mvrv'], color='blue', label='Actual MVRV')
+plt.plot(df['Day'], y_pred, color='red', label='Linear Regression')
+plt.title('MVRV Linear Regression')
 plt.xlabel('Date')
-plt.ylabel('Price (USD)')
+plt.ylabel('MVRV')
+plt.legend()
 plt.grid(True)
 plt.show()
 
-# Calculate daily returns
-btc_data['Returns'] = btc_data['Close'].pct_change()
+# Print the model coefficients
+print(f"Intercept: {model.intercept_}")
+print(f"Slope: {model.coef_[0]}")
 
-# Display summary statistics
-print(btc_data['Returns'].describe())
-
-# Plot a histogram of returns
-plt.figure(figsize=(10, 6))
-btc_data['Returns'].hist(bins=50)
-plt.title('Distribution of Daily Returns')
-plt.xlabel('Daily Returns')
-plt.ylabel('Frequency')
-plt.show()
+# Calculate R-squared
+r_squared = model.score(X, y)
+print(f"R-squared: {r_squared}")
