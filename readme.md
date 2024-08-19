@@ -1,1 +1,1 @@
-pip install --upgrade --no-cache-dir git+https://github.com/rongardF/tvdatafeed.git
+pip install pandas numpy matplotlib yfinance mplcurs

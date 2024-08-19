@@ -1,43 +1,53 @@
 import pandas as pd
 import numpy as np
-from sklearn.linear_model import LinearRegression
 import matplotlib.pyplot as plt
+import yfinance as yf
+from datetime import datetime
 
-# Read the CSV file
-df = pd.read_csv('data.csv')
+# Fetch Bitcoin price data
+btc = yf.Ticker("BTC-USD")
+btc_data = btc.history(start="2016-01-01", end=datetime.now().strftime('%Y-%m-%d'))
 
-# Convert the 'Day' column to datetime
-df['Day'] = pd.to_datetime(df['Day'])
+# Calculate a 365-day moving average as a proxy for "realized value"
+btc_data['MA365'] = btc_data['Close'].rolling(window=365).mean()
 
-# Create a numeric representation of dates (number of Days since the first date)
-df['Days_since_start'] = (df['Day'] - df['Day'].min()).dt.days
+# Calculate our MVRV proxy (current price / 365-day MA)
+btc_data['MVRV_proxy'] = btc_data['Close'] / btc_data['MA365']
 
-# Prepare the data for linear regression
-X = df['Days_since_start'].values.reshape(-1, 1)
-y = df['mvrv'].values
+# Drop NaN values (first year will have NaNs due to the moving average)
+btc_data.dropna(inplace=True)
 
-# Create and fit the linear regression model
-model = LinearRegression()
-model.fit(X, y)
+# Create the plot
+fig, ax1 = plt.subplots(figsize=(16, 8))
 
-# Make predictions
-y_pred = model.predict(X)
+# Plot Bitcoin price
+ax1.set_xlabel('Date')
+ax1.set_ylabel('Bitcoin Price (USD)', color='tab:blue')
+ax1.plot(btc_data.index, btc_data['Close'], color='tab:blue')
+ax1.tick_params(axis='y', labelcolor='tab:blue')
 
-# Plot the results
-plt.figure(figsize=(12, 6))
-plt.scatter(df['Day'], df['mvrv'], color='blue', label='Actual MVRV')
-plt.plot(df['Day'], y_pred, color='red', label='Linear Regression')
-plt.title('MVRV Linear Regression')
-plt.xlabel('Date')
-plt.ylabel('MVRV')
-plt.legend()
-plt.grid(True)
+# Create a second y-axis for MVRV proxy
+ax2 = ax1.twinx()
+ax2.set_ylabel('MVRV Proxy', color='tab:orange')
+ax2.plot(btc_data.index, btc_data['MVRV_proxy'], color='tab:orange')
+ax2.tick_params(axis='y', labelcolor='tab:orange')
+
+# Add horizontal lines at MVRV proxy = 1, 2, and 3
+ax2.axhline(y=1, color='green', linestyle='--', alpha=0.7)
+ax2.axhline(y=2, color='yellow', linestyle='--', alpha=0.7)
+ax2.axhline(y=3, color='red', linestyle='--', alpha=0.7)
+
+# Set title and display the plot
+plt.title('Bitcoin Price and MVRV Proxy (2016 - Present)')
+fig.tight_layout()
 plt.show()
 
-# Print the model coefficients
-print(f"Intercept: {model.intercept_}")
-print(f"Slope: {model.coef_[0]}")
+# Print some statistics
+print("Bitcoin Price Statistics:")
+print(btc_data['Close'].describe())
+print("\nMVRV Proxy Statistics:")
+print(btc_data['MVRV_proxy'].describe())
 
-# Calculate R-squared
-r_squared = model.score(X, y)
-print(f"R-squared: {r_squared}")
+# Save the data to a CSV file
+btc_data.to_csv('bitcoin_with_mvrv_proxy.csv')
+print("\nData saved to 'bitcoin_with_mvrv_proxy.csv'")
